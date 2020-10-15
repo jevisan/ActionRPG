@@ -1,13 +1,47 @@
 extends KinematicBody2D
 
+export var ACCELERATION = 200
+export var MAX_SPEED = 50 
+export var FRICCTION = 200
+
 const EnemyDeathEffect = preload("res://Effects/EnemyDeathEffect.tscn")
 var knockback = Vector2.ZERO
+var velocity = Vector2.ZERO
 
+enum {
+	IDLE,
+	WANDER,
+	CHASE
+}
+
+var state = CHASE
 onready var stats = $Stats
+onready var playerdetectionZone = $PlayerDetectionZone
+onready var sprite = $AnimatedSprite
 
 func _physics_process(delta):
 	knockback = knockback.move_toward(Vector2.ZERO, 200 * delta)
 	knockback = move_and_slide(knockback)
+	
+	match state:
+		IDLE:
+			velocity = velocity.move_toward(Vector2.ZERO, FRICCTION * delta)
+			seek_player()
+		WANDER:
+			pass
+		CHASE:
+			var player = playerdetectionZone.player
+			if player != null:
+				var direction = (player.global_position - global_position).normalized()
+				velocity = velocity.move_toward(direction * MAX_SPEED, ACCELERATION * delta)
+			else:
+				state = IDLE
+			sprite.flip_h = velocity.x < 0
+	velocity = move_and_slide(velocity)
+
+func seek_player():
+	if playerdetectionZone.can_see_player():
+		state = CHASE
 
 func _on_Hurtbox_area_entered(area):
 	stats.health -= area.damage
